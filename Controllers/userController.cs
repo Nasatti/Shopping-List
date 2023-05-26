@@ -18,34 +18,70 @@ namespace todoapi_v00.Controllers
 
         // GET: api/todo
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<User>>> GetUser([FromQuery] string? cognome, string?nome, string?email, int?id_famiglia)
+        public async Task<ActionResult<IEnumerable<User>>> GetUser([FromQuery] string? cognome, string?nome, string?email, int?id_famiglia, int page = 1, int pageSize = 10)
         {
             var queryable = _context.Users.AsQueryable();
 
             if(!string.IsNullOrEmpty(cognome) && !string.IsNullOrEmpty(nome))
             {
                 queryable = queryable.Where(x => x.Cognome == cognome);
-                return await queryable.Where(x => x.Nome == nome).ToListAsync();
+                await queryable.Where(x => x.Nome == nome).ToListAsync();
             }
             else if (!string.IsNullOrEmpty(cognome))
             {
-                return await queryable.Where(x => x.Cognome == cognome).ToListAsync();
+                await queryable.Where(x => x.Cognome == cognome).ToListAsync();
             }
             else if (!string.IsNullOrEmpty(nome))
             {
-                return await queryable.Where(x => x.Nome == nome).ToListAsync();
+                await queryable.Where(x => x.Nome == nome).ToListAsync();
             }
             else if (!string.IsNullOrEmpty(email))
             {
-                return await queryable.Where(x => x.Email == email).ToListAsync();
+                await queryable.Where(x => x.Email == email).ToListAsync();
             }
             else if (!string.IsNullOrEmpty(id_famiglia.ToString()))
             {
-                return await queryable.Where(x => x.Id_famiglia == id_famiglia).ToListAsync();
+                await queryable.Where(x => x.Id_famiglia == id_famiglia).ToListAsync();
             }
             else
             {
-                return await _context.Users.ToListAsync();
+                await _context.Users.ToListAsync();
+            }
+            // Conta il numero totale di articoli prima della paginazione
+            int totalArticles = await queryable.CountAsync();
+
+            // Applica la paginazione solo se ci sono elementi da paginare
+            if (totalArticles > 0)
+            {
+                // Applica la paginazione
+                var paginatedArticles = await queryable.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+
+                // Calcola il numero totale di pagine
+                int totalPages = (int)Math.Ceiling((double)totalArticles / pageSize);
+
+                // Crea l'oggetto di risposta con i dati paginati
+                var response = new
+                {
+                    Items = paginatedArticles,
+                    TotalCount = totalArticles,
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalPages = totalPages
+                };
+
+                // Restituisci la risposta
+                return Ok(response);
+            }
+            else
+            {
+                return Ok(new
+                {
+                    Items = new List<Article>(),
+                    TotalCount = 0,
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalPages = 0
+                });
             }
         }
 

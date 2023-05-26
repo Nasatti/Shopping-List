@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using TodoApi.Models;
 
@@ -18,31 +19,67 @@ namespace todoapi_v00.Controllers
 
         // GET: api/todo
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Article>>> GetArticle([FromQuery] int? id_spesa, string? articolo, bool? acquistato)
+        public async Task<ActionResult<IEnumerable<Article>>> GetArticle([FromQuery] int? id_spesa, string? articolo, bool? acquistato, int page = 1, int pageSize = 10)
         {
             var queryable = _context.Articles.AsQueryable();
 
             if (!string.IsNullOrEmpty(id_spesa.ToString()) && !string.IsNullOrEmpty(acquistato.ToString()))
             {
                 queryable = queryable.Where(x => x.Id_spesa == id_spesa);
-                return await queryable.Where(x => x.Acquistato == acquistato).ToListAsync();
+                await queryable.Where(x => x.Acquistato == acquistato).ToListAsync();
             }
             else if (!string.IsNullOrEmpty(id_spesa.ToString()) && !string.IsNullOrEmpty(articolo))
             {
                 queryable = queryable.Where(x => x.Id_spesa == id_spesa);
-                return await queryable.Where(x => x.Articolo == articolo).ToListAsync();
+                await queryable.Where(x => x.Articolo == articolo).ToListAsync();
             }
             else if (!string.IsNullOrEmpty(id_spesa.ToString()))
             {
-                return await queryable.Where(x => x.Id_spesa == id_spesa).ToListAsync();
+                await queryable.Where(x => x.Id_spesa == id_spesa).ToListAsync();
             }
             else if (!string.IsNullOrEmpty(articolo))
             {
-                return await queryable.Where(x => x.Articolo == articolo).ToListAsync();
+                await queryable.Where(x => x.Articolo == articolo).ToListAsync();
             }
             else
             {
-                return await _context.Articles.ToListAsync();
+                await _context.Articles.ToListAsync();
+            }
+            // Conta il numero totale di articoli prima della paginazione
+            int totalArticles = await queryable.CountAsync();
+
+            // Applica la paginazione solo se ci sono elementi da paginare
+            if (totalArticles > 0)
+            {
+                // Applica la paginazione
+                var paginatedArticles = await queryable.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+
+                // Calcola il numero totale di pagine
+                int totalPages = (int)Math.Ceiling((double)totalArticles / pageSize);
+
+                // Crea l'oggetto di risposta con i dati paginati
+                var response = new
+                {
+                    Items = paginatedArticles,
+                    TotalCount = totalArticles,
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalPages = totalPages
+                };
+
+                // Restituisci la risposta
+                return Ok(response);
+            }
+            else
+            {
+                return Ok(new
+                {
+                    Items = new List<Article>(),
+                    TotalCount = 0,
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalPages = 0
+                });
             }
         }
 

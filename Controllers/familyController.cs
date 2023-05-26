@@ -18,17 +18,53 @@ namespace todoapi_v00.Controllers
 
         // GET: api/todo
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Family>>> GetFamily([FromQuery] string? nome)
+        public async Task<ActionResult<IEnumerable<Family>>> GetFamily([FromQuery] string? nome, int page = 1, int pageSize = 10)
         {
             var queryable = _context.Familys.AsQueryable();
 
             if (!string.IsNullOrEmpty(nome))
             {
-                return await queryable.Where(x => x.Nome == nome).ToListAsync();
+                await queryable.Where(x => x.Nome == nome).ToListAsync();
             }
             else
             {
-                return await _context.Familys.ToListAsync();
+                await _context.Familys.ToListAsync();
+            }
+            // Conta il numero totale di articoli prima della paginazione
+            int totalArticles = await queryable.CountAsync();
+
+            // Applica la paginazione solo se ci sono elementi da paginare
+            if (totalArticles > 0)
+            {
+                // Applica la paginazione
+                var paginatedArticles = await queryable.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+
+                // Calcola il numero totale di pagine
+                int totalPages = (int)Math.Ceiling((double)totalArticles / pageSize);
+
+                // Crea l'oggetto di risposta con i dati paginati
+                var response = new
+                {
+                    Items = paginatedArticles,
+                    TotalCount = totalArticles,
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalPages = totalPages
+                };
+
+                // Restituisci la risposta
+                return Ok(response);
+            }
+            else
+            {
+                return Ok(new
+                {
+                    Items = new List<Article>(),
+                    TotalCount = 0,
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalPages = 0
+                });
             }
         }
 
